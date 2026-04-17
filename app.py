@@ -264,7 +264,7 @@ with map_col:
             continue
         meta = FLAG_META[flag]
         size = sub["peak_wbgt_f"].apply(
-            lambda v: 10 if v >= 90 else 8 if v >= 85 else 6 if v >= 80 else 5
+            lambda v: 14 if v >= 90 else 11 if v >= 85 else 8 if v >= 80 else 6
         )
         hover = (
             "<b>" + sub["flag_label"] + "</b><br>" +
@@ -286,8 +286,9 @@ with map_col:
             marker=dict(
                 color=meta["color"],
                 size=size,
-                opacity=0.82,
-                line=dict(width=0.4, color="#0d0d0d"),
+                opacity=0.95,
+                line=dict(width=1.2, color="#0d0d0d"),
+                symbol="circle",
             ),
             text=hover,
             hovertemplate="%{text}<extra></extra>",
@@ -298,30 +299,35 @@ with map_col:
         geo=dict(
             scope="usa",
             bgcolor="#0d0d0d",
-            landcolor="#141414",
-            subunitcolor="rgba(255,255,255,0.08)",
+            landcolor="#1c1f26",       # visible land — blue-grey instead of near-black
+            subunitcolor="rgba(255,255,255,0.18)",  # brighter state borders
             showlakes=True,
-            lakecolor="#0d0d0d",
+            lakecolor="#0d1520",       # dark blue lakes, distinct from land
             showrivers=True,
-            rivercolor="rgba(40,80,140,0.25)",
-            coastlinecolor="rgba(255,255,255,0.15)",
+            rivercolor="rgba(60,130,200,0.45)",     # visible rivers
+            coastlinecolor="rgba(255,255,255,0.35)",
+            countrycolor="rgba(255,255,255,0.18)",
+            showsubunits=True,
+            showcoastlines=True,
+            showcountries=True,
             projection_type="albers usa",
             showframe=False,
+            showocean=True,
+            oceancolor="#0a1520",      # deep ocean — clearly different from land
         ),
         paper_bgcolor="#0d0d0d",
         plot_bgcolor="#0d0d0d",
         font=dict(family="DM Mono, monospace", color="#e0d8c8", size=10),
-        height=480,
+        height=500,
         margin=dict(l=0, r=0, t=0, b=0),
         legend=dict(
             orientation="h", y=-0.04, x=0,
-            bgcolor="rgba(13,13,13,0.8)",
-            bordercolor="rgba(255,255,255,0.1)",
+            bgcolor="rgba(13,13,13,0.85)",
+            bordercolor="rgba(255,255,255,0.15)",
             borderwidth=1,
             font=dict(size=10, family="DM Mono"),
         ),
     )
-
     # Capture click for detail panel
     clicked = st.plotly_chart(
         fig_map,
