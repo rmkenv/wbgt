@@ -145,7 +145,7 @@ with st.sidebar:
 
     st.markdown("---")
     refresh_bust = st.session_state.get("refresh_bust", 0)
-    if st.button("🔄 Refresh data", use_container_width=True):
+    if st.button("🔄 Refresh data", width="stretch"):
         st.cache_data.clear()
         st.session_state["refresh_bust"] = refresh_bust + 1
         st.rerun()
@@ -306,7 +306,7 @@ with map_col:
     # ── Render map and persist clicked point to session_state ──
     clicked = st.plotly_chart(
         fig_map,
-        use_container_width=True,
+        width="stretch",
         on_select="rerun",
         selection_mode="points",
         key="wbgt_map",
@@ -381,7 +381,7 @@ with detail_col:
             mode="lines",
             line=dict(color=flag_color, width=2),
             fill="tozeroy",
-            fillcolor=flag_color + "22",
+            fillcolor=f"rgba({int(flag_color[1:3],16)},{int(flag_color[3:5],16)},{int(flag_color[5:7],16)},0.13)",
         ))
         for thr_val in [80, 85, 90]:
             fig_spark.add_hline(
@@ -400,7 +400,7 @@ with detail_col:
             showlegend=False,
         )
         st.markdown("<div style='font-family: DM Mono; font-size: 9px; color: #334; letter-spacing: 0.1em; margin-bottom: 4px;'>72H WBGT TREND</div>", unsafe_allow_html=True)
-        st.plotly_chart(fig_spark, use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(fig_spark, width="stretch", config={"displayModeBar": False})
 
         # Hours above threshold
         st.markdown("<div style='font-family: DM Mono; font-size: 9px; color: #334; letter-spacing: 0.1em; margin: 8px 0 6px;'>HOURS ABOVE THRESHOLD</div>", unsafe_allow_html=True)
@@ -438,7 +438,7 @@ with detail_col:
   WBGT = 0.7·Tnwb + 0.2·Tg + 0.1·Tdb
 </div>""", unsafe_allow_html=True)
 
-        if st.button("✕ Clear selection", use_container_width=True):
+        if st.button("✕ Clear selection", width="stretch"):
             del st.session_state["selected_lat"]
             del st.session_state["selected_lon"]
             st.rerun()
@@ -482,7 +482,7 @@ with chart_col:
         yaxis=dict(title="Grid points",    gridcolor="rgba(255,255,255,0.05)", showgrid=True),
         bargap=0.05,
     )
-    st.plotly_chart(fig_hist, use_container_width=True, config={"displayModeBar": False})
+    st.plotly_chart(fig_hist, width="stretch", config={"displayModeBar": False})
 
 with table_col:
     st.markdown("### HOTTEST GRID POINTS")
@@ -493,4 +493,4 @@ with table_col:
     top10["Lat"]     = top10["Lat"].round(1)
     top10["Lon"]     = top10["Lon"].round(1)
     top10["Peak °F"] = top10["Peak °F"].round(1)
-    st.dataframe(top10, use_container_width=True, height=260, hide_index=True)
+    st.dataframe(top10, width="stretch", height=260, hide_index=True)
