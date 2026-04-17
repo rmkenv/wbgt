@@ -1,15 +1,12 @@
 """
 app.py — Streamlit WBGT Dashboard
-===================================
-Run locally:  streamlit run app.py
-Deploy:       Push to GitHub → connect on share.streamlit.io
 """
 
+import os
 import time
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-import plotly.express as px
 import streamlit as st
 from datetime import datetime, timezone
 
@@ -98,13 +95,12 @@ hr { border-color: rgba(255,255,255,0.07) !important; }
 
 .stAlert { font-family: 'DM Mono', monospace !important; font-size: 11px !important; }
 
-/* Hide default streamlit elements */
 #MainMenu, footer, header { visibility: hidden; }
 </style>
 """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# DATA LOADING — cached with TTL
+# DATA LOADING
 # ─────────────────────────────────────────────────────────────────────────────
 
 @st.cache_data(ttl=CACHE_TTL, show_spinner=False)
@@ -116,7 +112,6 @@ def load_wbgt(hours, grid_step, _bust=0):
     processed = process_all(raw, hours=hours)
     df = to_dataframe(processed)
     return processed, df, from_cache
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SIDEBAR
@@ -175,7 +170,6 @@ with st.spinner("Fetching forecast from Open-Meteo..."):
     )
     elapsed = time.time() - t0
 
-# Apply flag filter
 if flag_filter:
     df_vis = df[df["flag"].isin(flag_filter)].copy()
 else:
@@ -186,8 +180,11 @@ else:
 # ─────────────────────────────────────────────────────────────────────────────
 
 now_str = datetime.now(timezone.utc).strftime("%b %d, %Y %H:%M UTC")
-cache_str = f"cached ({int((time.time() - __import__('os').path.getmtime('wbgt_cache.pkl')) / 60)}m old)" \
-            if from_cache and __import__('os').path.exists("wbgt_cache.pkl") else f"fetched in {elapsed:.1f}s"
+cache_str = (
+    f"cached ({int((time.time() - os.path.getmtime('wbgt_cache.pkl')) / 60)}m old)"
+    if from_cache and os.path.exists("wbgt_cache.pkl")
+    else f"fetched in {elapsed:.1f}s"
+)
 
 st.markdown(f"""
 <div style='font-family: DM Mono, monospace; font-size: 9px; color: #445; letter-spacing: 0.15em; margin-bottom: 6px;'>
@@ -207,44 +204,23 @@ st.markdown(f"""
 
 m1, m2, m3, m4, m5 = st.columns(5)
 
-peak = df["peak_wbgt_f"].max()
+peak       = df["peak_wbgt_f"].max()
 n_extreme  = int((df["peak_wbgt_f"] >= 90).sum())
 n_high     = int(((df["peak_wbgt_f"] >= 85) & (df["peak_wbgt_f"] < 90)).sum())
 n_caution  = int(((df["peak_wbgt_f"] >= 80) & (df["peak_wbgt_f"] < 85)).sum())
 n_safe     = int((df["peak_wbgt_f"] < 80).sum())
-
 peak_color = "#C0392B" if peak >= 90 else "#FF4757" if peak >= 85 else "#FFD32A" if peak >= 80 else "#2ED573"
 
 with m1:
-    st.markdown(f"""
-    <div class='metric-card'>
-      <div class='metric-val' style='color:{peak_color}'>{peak:.1f}°F</div>
-      <div class='metric-lbl'>CONUS PEAK WBGT</div>
-    </div>""", unsafe_allow_html=True)
+    st.markdown(f"<div class='metric-card'><div class='metric-val' style='color:{peak_color}'>{peak:.1f}°F</div><div class='metric-lbl'>CONUS PEAK WBGT</div></div>", unsafe_allow_html=True)
 with m2:
-    st.markdown(f"""
-    <div class='metric-card'>
-      <div class='metric-val' style='color:#C0392B'>{n_extreme}</div>
-      <div class='metric-lbl'>EXTREME ≥90°F</div>
-    </div>""", unsafe_allow_html=True)
+    st.markdown(f"<div class='metric-card'><div class='metric-val' style='color:#C0392B'>{n_extreme}</div><div class='metric-lbl'>EXTREME ≥90°F</div></div>", unsafe_allow_html=True)
 with m3:
-    st.markdown(f"""
-    <div class='metric-card'>
-      <div class='metric-val' style='color:#FF4757'>{n_high}</div>
-      <div class='metric-lbl'>HIGH RISK 85–89°F</div>
-    </div>""", unsafe_allow_html=True)
+    st.markdown(f"<div class='metric-card'><div class='metric-val' style='color:#FF4757'>{n_high}</div><div class='metric-lbl'>HIGH RISK 85–89°F</div></div>", unsafe_allow_html=True)
 with m4:
-    st.markdown(f"""
-    <div class='metric-card'>
-      <div class='metric-val' style='color:#FFD32A'>{n_caution}</div>
-      <div class='metric-lbl'>CAUTION 80–84°F</div>
-    </div>""", unsafe_allow_html=True)
+    st.markdown(f"<div class='metric-card'><div class='metric-val' style='color:#FFD32A'>{n_caution}</div><div class='metric-lbl'>CAUTION 80–84°F</div></div>", unsafe_allow_html=True)
 with m5:
-    st.markdown(f"""
-    <div class='metric-card'>
-      <div class='metric-val' style='color:#2ED573'>{n_safe}</div>
-      <div class='metric-lbl'>SAFE &lt;80°F</div>
-    </div>""", unsafe_allow_html=True)
+    st.markdown(f"<div class='metric-card'><div class='metric-val' style='color:#2ED573'>{n_safe}</div><div class='metric-lbl'>SAFE &lt;80°F</div></div>", unsafe_allow_html=True)
 
 st.markdown("<div style='margin-bottom:16px'></div>", unsafe_allow_html=True)
 
@@ -255,7 +231,6 @@ st.markdown("<div style='margin-bottom:16px'></div>", unsafe_allow_html=True)
 map_col, detail_col = st.columns([3, 1], gap="small")
 
 with map_col:
-    # Build Plotly Scattergeo map
     fig_map = go.Figure()
 
     for flag in ["green", "yellow", "red", "black"]:
@@ -277,7 +252,6 @@ with map_col:
             sub["lat"].round(1).astype(str) + "°N, " +
             sub["lon"].abs().round(1).astype(str) + "°W"
         )
-
         fig_map.add_trace(go.Scattergeo(
             lat=sub["lat"],
             lon=sub["lon"],
@@ -299,12 +273,12 @@ with map_col:
         geo=dict(
             scope="usa",
             bgcolor="#0d0d0d",
-            landcolor="#1c1f26",       # visible land — blue-grey instead of near-black
-            subunitcolor="rgba(255,255,255,0.18)",  # brighter state borders
+            landcolor="#1c1f26",
+            subunitcolor="rgba(255,255,255,0.18)",
             showlakes=True,
-            lakecolor="#0d1520",       # dark blue lakes, distinct from land
+            lakecolor="#0d1520",
             showrivers=True,
-            rivercolor="rgba(60,130,200,0.45)",     # visible rivers
+            rivercolor="rgba(60,130,200,0.45)",
             coastlinecolor="rgba(255,255,255,0.35)",
             countrycolor="rgba(255,255,255,0.18)",
             showsubunits=True,
@@ -313,7 +287,7 @@ with map_col:
             projection_type="albers usa",
             showframe=False,
             showocean=True,
-            oceancolor="#0a1520",      # deep ocean — clearly different from land
+            oceancolor="#0a1520",
         ),
         paper_bgcolor="#0d0d0d",
         plot_bgcolor="#0d0d0d",
@@ -328,7 +302,8 @@ with map_col:
             font=dict(size=10, family="DM Mono"),
         ),
     )
-    # Capture click for detail panel
+
+    # ── Render map and persist clicked point to session_state ──
     clicked = st.plotly_chart(
         fig_map,
         use_container_width=True,
@@ -336,30 +311,31 @@ with map_col:
         selection_mode="points",
         key="wbgt_map",
     )
+    if clicked and clicked.get("selection") and clicked["selection"].get("points"):
+        pt = clicked["selection"]["points"][0]
+        st.session_state["selected_lat"] = round(pt["lat"], 1)
+        st.session_state["selected_lon"] = round(pt["lon"], 1)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# DETAIL PANEL — responds to map click
+# DETAIL PANEL — reads from session_state so it survives reruns
 # ─────────────────────────────────────────────────────────────────────────────
 
 with detail_col:
-    sel_pt = None
-    if clicked and clicked.get("selection") and clicked["selection"].get("points"):
-        pt = clicked["selection"]["points"][0]
-        sel_lat = round(pt["lat"], 1)
-        sel_lon = round(pt["lon"], 1)
+    sel_lat = st.session_state.get("selected_lat")
+    sel_lon = st.session_state.get("selected_lon")
+    sel_pt  = None
+
+    if sel_lat is not None and sel_lon is not None:
         matches = df[
             (df["lat"].round(1) == sel_lat) &
             (df["lon"].round(1) == sel_lon)
         ]
         if not matches.empty:
-            row = matches.iloc[0]
-            # Find full processed data for sparkline
             sel_pt = next(
                 (p for p in processed
                  if round(p["lat"], 1) == sel_lat and round(p["lon"], 1) == sel_lon),
                 None
             )
-            sel_row = row
 
     if sel_pt is None:
         st.markdown("""
@@ -370,18 +346,15 @@ with detail_col:
   and component variables
 </div>""", unsafe_allow_html=True)
 
-        # Threshold guide
         st.markdown("---")
         st.markdown("<div style='font-family: DM Mono; font-size: 9px; color: #334; letter-spacing: 0.12em; margin-bottom: 8px;'>MILITARY THRESHOLDS</div>", unsafe_allow_html=True)
         for flag, meta in FLAG_META.items():
-            thr = meta["threshold"]
+            thr     = meta["threshold"]
             thr_str = f"≥ {thr}°F" if thr > 0 else "< 80°F"
             st.markdown(f"""
 <div style='display: flex; align-items: center; gap: 8px; margin-bottom: 6px;'>
   <div style='width: 8px; height: 8px; border-radius: 50%; background: {meta["color"]}; flex-shrink: 0;'></div>
-  <div style='font-family: DM Mono; font-size: 9px; color: #556;'>
-    {thr_str} — {meta["label"]}
-  </div>
+  <div style='font-family: DM Mono; font-size: 9px; color: #556;'>{thr_str} — {meta["label"]}</div>
 </div>""", unsafe_allow_html=True)
 
     else:
@@ -400,9 +373,8 @@ with detail_col:
   </div>
 </div>""", unsafe_allow_html=True)
 
-        # Sparkline via Plotly
-        times = sel_pt["series_times"]
-        vals  = sel_pt["series_3h"]
+        # Sparkline
+        vals = sel_pt["series_3h"]
         fig_spark = go.Figure()
         fig_spark.add_trace(go.Scatter(
             x=list(range(len(vals))), y=vals,
@@ -411,12 +383,10 @@ with detail_col:
             fill="tozeroy",
             fillcolor=flag_color + "22",
         ))
-        # Threshold lines
-        for thr_name, thr_val in [("caution", 80), ("high", 85), ("extreme", 90)]:
+        for thr_val in [80, 85, 90]:
             fig_spark.add_hline(
                 y=thr_val,
-                line_dash="dot", line_color="rgba(255,255,255,0.2)",
-                line_width=1,
+                line_dash="dot", line_color="rgba(255,255,255,0.2)", line_width=1,
                 annotation_text=f"{thr_val}°",
                 annotation_font=dict(size=8, color="#556"),
                 annotation_position="right",
@@ -435,9 +405,9 @@ with detail_col:
         # Hours above threshold
         st.markdown("<div style='font-family: DM Mono; font-size: 9px; color: #334; letter-spacing: 0.1em; margin: 8px 0 6px;'>HOURS ABOVE THRESHOLD</div>", unsafe_allow_html=True)
         for label, key, color in [
-            ("≥ 80°F Caution",  "hrs_caution",   "#FFD32A"),
-            ("≥ 85°F High",     "hrs_high",       "#FF4757"),
-            ("≥ 90°F Extreme",  "hrs_extreme",    "#C0392B"),
+            ("≥ 80°F Caution", "hrs_caution", "#FFD32A"),
+            ("≥ 85°F High",    "hrs_high",    "#FF4757"),
+            ("≥ 90°F Extreme", "hrs_extreme", "#C0392B"),
         ]:
             val = sel_pt[key]
             pct = min(100, val / 72 * 100)
@@ -468,6 +438,11 @@ with detail_col:
   WBGT = 0.7·Tnwb + 0.2·Tg + 0.1·Tdb
 </div>""", unsafe_allow_html=True)
 
+        if st.button("✕ Clear selection", use_container_width=True):
+            del st.session_state["selected_lat"]
+            del st.session_state["selected_lon"]
+            st.rerun()
+
 # ─────────────────────────────────────────────────────────────────────────────
 # BOTTOM: DISTRIBUTION + TOP 10 TABLE
 # ─────────────────────────────────────────────────────────────────────────────
@@ -477,7 +452,6 @@ chart_col, table_col = st.columns([2, 1], gap="medium")
 
 with chart_col:
     st.markdown("### WBGT DISTRIBUTION ACROSS CONUS")
-
     fig_hist = go.Figure()
     fig_hist.add_trace(go.Histogram(
         x=df["peak_wbgt_f"],
@@ -516,12 +490,7 @@ with table_col:
         ["lat", "lon", "peak_wbgt_f", "flag_label", "hrs_extreme"]
     ].copy()
     top10.columns = ["Lat", "Lon", "Peak °F", "Flag", "Hrs ≥90°F"]
-    top10["Lat"] = top10["Lat"].round(1)
-    top10["Lon"] = top10["Lon"].round(1)
+    top10["Lat"]     = top10["Lat"].round(1)
+    top10["Lon"]     = top10["Lon"].round(1)
     top10["Peak °F"] = top10["Peak °F"].round(1)
-    st.dataframe(
-        top10,
-        use_container_width=True,
-        height=260,
-        hide_index=True,
-    )
+    st.dataframe(top10, use_container_width=True, height=260, hide_index=True)
